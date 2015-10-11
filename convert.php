@@ -57,7 +57,26 @@ function normalizeChannelName($channelName)
 
 function validUrl($url)
 {
-    return filter_var($url, FILTER_VALIDATE_URL);
+
+    if (filter_var($url, FILTER_VALIDATE_URL)) {
+        $components = parse_url($url);
+
+        // enable caching
+        static $urlCache = [];
+        $cacheKey = $components['scheme'] . $components['host'] . @$components['port'];
+        if (isset($urlCache[$cacheKey])) {
+            echo "Returning response for $url from cache." . PHP_EOL;
+            return $urlCache[$cacheKey];
+        }
+
+        $live = pingPort($components['host'], $components['scheme'], @$components['port']);
+        $urlCache[$cacheKey] = $live;
+        if ($live) {
+            return true;
+        }
+        echo "Url $url is not live." . PHP_EOL;
+    }
+    return false;
 }
 
 function writePlaylist($array, $filename = 'output.m3u')
@@ -67,4 +86,28 @@ function writePlaylist($array, $filename = 'output.m3u')
         file_put_contents($filename, '#EXTINF:-1,' . $channel['name'] . PHP_EOL, FILE_APPEND);
         file_put_contents($filename, $channel['path'] . PHP_EOL, FILE_APPEND);
     }
+}
+
+function pingPort($host, $proto, $port = null)
+{
+    if ($port === null) {
+        switch ($proto) {
+            case 'http':
+                $port = 80;
+                break;
+            case 'https':
+                $port = 443;
+                break;
+            case 'rtmp':
+                $port = 1935;
+                break;
+            case 'rtsp':
+                $port = 554;
+                break;
+            default:
+                break;
+        }
+    }
+
+    return (bool) fsockopen($host, $port, $errno, $errstr, 5);
 }
