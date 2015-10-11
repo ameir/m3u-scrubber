@@ -1,0 +1,12 @@
+{
+    "name": "m3u-scrubber",
+    "authors": [
+        {
+            "name": "Ameir Abdeldayem",
+            "email": "ameirh@gmail.com"
+        }
+    ],
+    "require": {
+        "gemorroj/m3u-parser": "dev-master"
+    }
+}
