@@ -81,11 +81,13 @@ function validUrl($url)
 
 function writePlaylist($array, $filename = 'output.m3u')
 {
-    file_put_contents($filename, '#EXTM3U' . PHP_EOL);
+    $fp = fopen($filename, 'w');
+    fwrite($fp, "#EXTM3U\n");
     foreach ($array as $channel) {
-        file_put_contents($filename, '#EXTINF:-1,' . $channel['name'] . PHP_EOL, FILE_APPEND);
-        file_put_contents($filename, $channel['path'] . PHP_EOL, FILE_APPEND);
+        fwrite($fp, '#EXTINF:-1,' . $channel['name'] . "\n");
+        fwrite($fp, $channel['path'] . "\n");
     }
+    fclose($fp);
 }
 
 function pingPort($host, $proto, $port = null)
