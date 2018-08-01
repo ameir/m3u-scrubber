@@ -107,6 +107,10 @@ function validStream($url)
 
 function writePlaylist($array, $filename = 'output.m3u')
 {
+    if (!count($array)) {
+        echo 'No channels available.' . PHP_EOL;
+        return;
+    }
     $fp = fopen($filename, 'w');
     fwrite($fp, "#EXTM3U\n");
     foreach ($array as $channel) {
