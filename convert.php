@@ -94,8 +94,15 @@ function validUrl($url)
 // vlc returns 0 even if a stream is broken, so we parse the output instead
 function validStream($url)
 {
-    $output = shell_exec("vlc $url --run-time=5 --stop-time=5 --play-and-exit 2>&1");
-    return strpos($output, 'Using Video Toolbox') !== false;
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 10,
+        ],
+    ]);
+
+    $size = 1024;
+    $section = file_get_contents($url, false, $context, 0, $size);
+    return strlen($section) === $size;
 }
 
 function writePlaylist($array, $filename = 'output.m3u')
