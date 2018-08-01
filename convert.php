@@ -1,9 +1,12 @@
+#!/usr/bin/php
 <?php
 include 'vendor/autoload.php';
 
 use M3uParser\M3uParser;
 
 $obj = new M3uParser();
+$obj->addDefaultTags();
+
 $files = glob('m3u/*.m3u');
 
 $a = [];
@@ -12,14 +15,9 @@ foreach ($files as $file) {
 
     foreach ($data as $entry) {
         $suffix = '';
-        $normalizedChannelName = normalizeChannelName($entry->getName());
+        $normalizedChannelName = normalizeChannelName($entry->getExtTags()[0]->getTitle());
         $normalizedChannelKey = normalizeChannelKey($normalizedChannelName);
 
-        // check if URL is valid
-        if (!validUrl($entry->getPath())) {
-            echo "'$normalizedChannelName' does not have a valid URL; skipping." . PHP_EOL;
-            continue;
-        }
         // check for duplicate channel names
         if (isset($a[$normalizedChannelKey])) {
             if ($a[$normalizedChannelKey]['path'] == $entry->getPath()) {
@@ -29,9 +27,23 @@ foreach ($files as $file) {
             // distinguish them by URL hash
             $suffix = ' | ' . sha1($entry->getPath());
         }
+        // check if URL is valid
+        if (!validUrl($entry->getPath())) {
+            echo "'$normalizedChannelName' does not have a valid URL; skipping." . PHP_EOL;
+            continue;
+        }
+        // check if stream is playable
+        if (!validStream($entry->getPath())) {
+            echo "'$normalizedChannelName' does not have a valid stream; skipping." . PHP_EOL;
+            continue;
+        }
+        if (strlen($suffix)) {
+            $entry->getExtTags()[0]->setTitle($normalizedChannelName . $suffix);
+            $entry->getExtTags()[0]->setAttribute('tvg-name', $normalizedChannelName . $suffix);
+        }
+
         $a[$normalizedChannelKey . $suffix] = [
-            'name' => $normalizedChannelName . $suffix,
-            'path' => $entry->getPath(),
+            'entry' => $entry->__toString(),
         ];
     }
 }
@@ -79,13 +91,19 @@ function validUrl($url)
     return false;
 }
 
+// vlc returns 0 even if a stream is broken, so we parse the output instead
+function validStream($url)
+{
+    $output = shell_exec("vlc $url --run-time=5 --stop-time=5 --play-and-exit 2>&1");
+    return strpos($output, 'Using Video Toolbox') !== false;
+}
+
 function writePlaylist($array, $filename = 'output.m3u')
 {
     $fp = fopen($filename, 'w');
     fwrite($fp, "#EXTM3U\n");
     foreach ($array as $channel) {
-        fwrite($fp, '#EXTINF:-1,' . $channel['name'] . "\n");
-        fwrite($fp, $channel['path'] . "\n");
+        fwrite($fp, $channel['entry'] . "\n");
     }
     fclose($fp);
 }
